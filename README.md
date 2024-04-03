@@ -3,7 +3,7 @@ This project aims to explore the use of Julia and CUDA through a practical case 
 
 ## Project Description
 
-We used JuliaGPU (https://juliagpu.org/learn/) to run Julia programs on NVIDIA CUDA platforms. 
+We used JuliaGPU (https://juliagpu.org) to run Julia programs on NVIDIA CUDA platforms. 
 
 Beyond just being a template for course members, this project can be used by non-course members as the general structure for CUDA projects.
 
