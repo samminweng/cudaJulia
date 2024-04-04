@@ -1,6 +1,6 @@
 COMPILER=julia
 
 run:
-	$(COMPILER) src/test_cuda.jl
+	$(COMPILER) src/lorenz.jl
 
 all: run
