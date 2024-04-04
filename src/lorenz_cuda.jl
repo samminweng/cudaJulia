@@ -25,6 +25,33 @@ function lorenz(x)
             x[1]*(ρ-x[3]) - x[2],
             x[1]*x[2] - β*x[3]]
 end
+# Plot loren results on a plot (png) and an animation (gif)
+function plot_loren(out, device)
+    # Animate the loren on CPU
+    plot(out[1,:], out[2,:], out[3,:])
+    path = "images/lorenz_$device.png"
+    savefig(path)
+    print("Save $device result to $path")
+    # initialize a 3D plot with 1 empty series
+    plt = plot3d(
+        1,
+        # xlim = (0, 30),
+        # ylim = (0, 30),
+        # zlim = (0, 30),
+        title = "Lorenz Attractor on $device",
+        legend = false,
+        marker = 2,
+    )
+
+    # build an animated gif by pushing new points to the plot, saving every 10th frame
+    anim = @animate for i=1:STEPS        
+        push!(plt, out[1,i], out[2,i], out[3,i])
+    end every 1
+    path = "images/lorenz_$device.gif"
+    gif(anim, path, fps=1)
+    print("Save $device result to $path")
+end
+
 # Animate lorenz system from step 2 upto the final steps
 function gpu_step!(x)
     dt = 0.01
@@ -51,16 +78,12 @@ function gpu_benchmark()
         x = copy(out_d[:, step-1])
         gpu_step!(x)
         out_d[:, step] = x
+        x = nothing
     end
     # Run the lorenz on GPUs
-    # println("Unit Test: Execution time of CUDA 'gpu_step!' ", )
     out = Array(out_d)
     println("out = ", out, " Vector size 'out' = ", size(out))
-    plot(out[1,:], out[2,:], out[3,:])
-    path = "images/lorenz_gpu.png"
-    savefig(path)
-    print("Save GPU results to $path")
-    println("Complete LORENZ on GPUs")
+    plot_loren(out, "gpu")
 end
 
 
@@ -73,32 +96,6 @@ function cpu_step!(out)
     return nothing
 end
 
-function plot_loren(out, device)
-    # Animate the loren on CPU
-    plot(out[1,:], out[2,:], out[3,:])
-    path = "images/lorenz_$device.png"
-    savefig(path)
-    print("Save $device result to $path")
-    # initialize a 3D plot with 1 empty series
-    plt = plot3d(
-        1,
-        # xlim = (0, 30),
-        # ylim = (0, 30),
-        # zlim = (0, 30),
-        title = "Lorenz Attractor",
-        legend = false,
-        marker = 2,
-    )
-
-    # build an animated gif by pushing new points to the plot, saving every 10th frame
-    anim = @animate for i=1:STEPS        
-        push!(plt, out[1,i], out[2,i], out[3,i])
-    end every 1
-    path = "images/lorenz_$device.gif"
-    gif(anim, path, fps=15*2)
-    print("Save $device result to $path")
-end
-
 function cpu_benchmark()
     x = zeros(DIM)
     x[1] = 2.0
@@ -106,11 +103,11 @@ function cpu_benchmark()
     println(" size(out) = ", size(out))
     out[:, 1] = x 
     cpu_step!(out)
-    println("out = ", out)
+    # println("out = ", out)
     plot_loren(out, "cpu")
 end
 
 # Perform LORENZ on CPUs
-cpu_benchmark()
+# cpu_benchmark()
 # Perform LORENZ on GPUS
-# gpu_benchmark()
+gpu_benchmark()
