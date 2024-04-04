@@ -5,9 +5,10 @@ This project aims to explore the use of Julia and CUDA through a practical case 
 
 We used JuliaGPU (https://juliagpu.org) to run Julia programs on NVIDIA CUDA platforms. 
 
-Another reference is [Solving PDEs in parallel on GPUs with Julia](https://pde-on-gpu.vaw.ethz.ch/)
+This project aims to solve Lorenz using CUDA on graphical processing units (GPUs) with the Julia programming language.
+
+Another interesting reference is [Solving PDEs in parallel on GPUs with Julia](https://pde-on-gpu.vaw.ethz.ch/)
 link: https://pde-on-gpu.vaw.ethz.ch
-This project aims to solve partial differential equations (PDEs) in parallel on graphical processing units (GPUs) with the Julia programming language.
 
 
 
