@@ -1,4 +1,4 @@
-# Cuda + Julia
+# CUDA enabled Lorenz System using Julia
 This project aims to explore the use of Julia and CUDA through a practical case study.
 
 ## Project Description
