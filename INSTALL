@@ -1,6 +1,0 @@
-You first need to have a computer with a compatible GPU and have installed CUDA. This code snippet installs the CUDA package within the Julia environment.
-`
-import Pkg
-Pkg.add("CUDA")
-Pkg.test("CUDA")
-`
