@@ -13,7 +13,7 @@ using CUDA, Test, BenchmarkTools, BenchmarkPlots, StatsPlots
 CUDA.allowscalar(false) # Don't allow scalar access
 
 const DIM = 3 # Specify the dimensions
-const STEPS = 1000*1000
+const STEPS = 2*1000
 const FPS = 10
 
 # # integrate dx/dt = lorenz(t,x) numerically for 10 steps
@@ -51,9 +51,6 @@ function plot_loren(out, device)
     path = "images/lorenz_$device.gif"
     gif(anim, path, fps=FPS)
     println("Save gif result to $path")
-
-    
-
 end
 
 function lorenz_gpu(x, y, z)
@@ -169,4 +166,4 @@ gpu_run()
 # 
 # Perform LORENZ on GPUS
 #cpu_benchmarks()
-gpu_benchmark()
+#gpu_benchmark()
