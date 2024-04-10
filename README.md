@@ -9,7 +9,7 @@ I leveraged JuliaGPU (https://juliagpu.org/) to execute Julia programs on NVIDIA
 The Lorenz system is used to model certain types of chaotic dynamical systems. In my case study, I utilize a set of three equations, shown below, to simulate the movement of a particle $(x, y, z)$ at each time step. These equations incorporate constants: $dt=0.01, σ=10, ρ=28, β=8/3$. The particle's movement at each step is based on its position in the previous step.
 - $Eq (1): x_{step} = x_{step-1} + (σ * (y_{step-1} -x_{step-1})) * dt$ 
 - $Eq (2): y_{step} = y_{step-1} + (x_{step-1} * (ρ-z_{step-1}) - y_{step-1}) * dt$
-- $Eq (3): z_{step} = z_{step-1} + (x_{step-1}*y_{step-1} - β*z_{step-1}) * dt$
+- $Eq (3): z_{step} = z_{step-1} + (x_{step-1} * y_{step-1} - β * z_{step-1}) * dt$
 
 My GPU implementation leverages CUDA.jl (v3.0) (https://juliagpu.org/) to execute the Lorenz system on the GPU. The CUDA kernel computes the positions (x, y, z) for the next step concurrently at each iteration, utilizing the provided three equations.
 
