@@ -45,10 +45,10 @@ anim = @animate for it=1:nt
     # println("----------------------------------------")
     # Plot the results
     plot(xc, C, label="Concentration", linewidth=:1.0,
-         xlim = (0, 20), ylim = (-1, 1),
+         xlim = (0, 20), ylim = (-1, 1), legend=:bottomright,
          markershape=:circle, markersize=5, framestyle=:box)
     plot!(xc[1:end-1].+dx/2, qx, label="flux of concentration", linewidth=:1.0,
-         xlim = (0, 20), ylim = (-1, 1),
+         xlim = (0, 20), ylim = (-1, 1), legend=:bottomright,
          markershape=:circle, markersize=5, framestyle=:box)
 end every nvis
 path = "images/pde.gif"
