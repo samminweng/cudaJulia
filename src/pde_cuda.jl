@@ -8,17 +8,17 @@ using Plots
 # using Images, FileIO
 # # Use Cuda
 # using CUDA, Test, BenchmarkTools, BenchmarkPlots, StatsPlots
-const FPS = 1
+const FPS = 5
 # physics
-const lx = 20.0 # domain length
-const dc = 1.0 # diffusion coefficient 
+lx = 20.0 # domain length
+dc = 1.0 # diffusion coefficient 
 # numerics
-const nx   = 40 # the number of grid points
-const nvis = 5 # frequency of updating the visualisation
+nx   = 200 # the number of grid points
+nvis = 5 # frequency of updating the visualisation
 # derived numerics
-const dx = lx/nx      #grid spacing dx 
-const dt = dx^2/dc/2  
-const nt = nx^2 ÷ 100 # time 
+dx = lx/nx      #grid spacing dx 
+dt = dx^2/dc/2  
+nt = nx^2 ÷ 100 # time 
 # creates a linear range of numbers, starting from dx/2, ending at lx-dx/2, and 200 numbers (nx)
 xc = LinRange(dx/2, lx-dx/2, nx)
 println("xc = ", xc)
