@@ -10,7 +10,7 @@ using Plots
 # using CUDA, Test, BenchmarkTools, BenchmarkPlots, StatsPlots
 const FPS = 5
 # Visualize diffusion using 1D array
-function diffusion_1D()
+function heat_diffusion_1D()
     # physics
     lx = 20.0 # domain length
     dc = 1.0 # diffusion coefficient 
@@ -55,9 +55,50 @@ function diffusion_1D()
         plot!(xc[1:end-1].+dx/2, qx, label="flux of concentration", markershape=:circle, markersize=5, framestyle=:box)
     end every nvis    
     # Save to gif file
-    path = "images/diffusion_1D.gif"
+    path = "images/pde/heat_diffusion_1D.gif"
     gif(anim, path, fps=FPS)
     println("Save gif result to $path")
 end
 
-diffusion_1D()
+# heat_diffusion_1D()
+
+function acoustic_wave()
+    # physics
+    lx = 20.0 # domain length
+    dc = 1.0 # diffusion coefficient 
+    ρ, β = 1.0, 1.0
+    # numerics
+    nx   = 200 # the number of grid points
+    nvis = 5 # frequency of updating the visualisation
+    # derived numerics
+    dx = lx/nx      #grid spacing dx 
+    dt = dx^2/dc/2  # derivatives in time
+    nt = nx^2 ÷ 100 # time 
+    # creates a linear range of numbers
+    xc = LinRange(dx/2, lx-dx/2, nx)
+    println("size(xc) = ", size(xc))
+    println("Constant: ", " nt =", nt, " dc = ", dc, " dx = ", dx, " dt = ", dt)
+
+    # array initialisation
+    Pr = @. exp(-(xc - lx/4)^2) #pressure
+    Vx = zeros(Float64, nx-1)
+    # Go through each time step
+    anim = @animate for it=1:nt
+        # diffusion physics
+        Vx .= Vx - dt/ρ .* diff(Pr) ./dx  #velocity update
+        # println("Vx = ", Vx)
+        Pr[2:end-1] .= Pr[2:end-1] - dt/β .* diff(Vx) ./dx
+        # println("Pr = ", Pr)
+        # Plot the results
+        plot(xlim = (0, lx), ylim = (-1.1, 1.1), 
+            linewidth=:1.0, legend=:bottomright,
+            xlabel="lx", ylabel="pressure")
+        plot!(xc, Pr, label="pressure", markershape=:circle, markersize=5, framestyle=:box)
+        plot!(xc[1:end-1].+dx/2, Vx, label="velocity update", markershape=:circle, markersize=5, framestyle=:box)
+    end
+    # # Save to gif file
+    path = "images/pde/wave_diffusion_1D.gif"
+    gif(anim, path, fps=FPS)
+    println("Save gif result to $path")
+end
+acoustic_wave()
