@@ -8,7 +8,7 @@ using Plots
 # using Images, FileIO
 # # Use Cuda
 # using CUDA, Test, BenchmarkTools, BenchmarkPlots, StatsPlots
-const FPS = 5
+const FPS = 15
 # Visualize diffusion using 1D array
 function heat_diffusion_1D()
     # physics
@@ -110,27 +110,32 @@ function advection()
     lx = 20.0 # domain length
     vx = 1.0  # coefficient 
     # numerics
-    nx = 200   # the number of grid points
+    nx = 200  # the number of grid points
     dx = lx/nx  # grid spacing dx 
     # derived numerics
     dt = dx/abs(vx)
-    nt = nx^2 ÷ 100 # time 
+    nt = nx # time 
+    dx = lx/nx  # grid spacing dx 
+    println("Constant: ", "dx = ", dx, " dt = ", dt, " nt = ", nt, " nt÷2 = ", nt÷2)
     # creates a linear range of numbers
     xc = LinRange(dx/2, lx-dx/2, nx)
     # array initialisation
     C = @. exp(-(xc - lx/4)^2)
+    C_i  = copy(C)
     println("size(C)", size(C))
     anim = @animate for it=1:nt
-        if vx > 0
-            C[2:end] .-= dt.*vx.*diff(C)./dx
-        else
-            C[1:end-1] .-= dt.*vx.*diff(C)./dx
+        C[2:end] .-= dt.*max(vx, 0.0).*diff(C)./dx # if vx >0
+        C[1:end-1] .-= dt.*min(vx, 0.0).*diff(C)./dx # if vx <0
+        if (it % (nt÷2)) == 0 # ÷ integer divide
+            vx = -vx
         end
+        # println("title", round(it*dt, digits=1))
         #println("it = ", it, " C = ", C[1:5])
-        plot(xlim = (0, lx), ylim = (-15.1, 15.1), 
+        plot(xlim = (0, lx), ylim = (-0.1, 1.1), 
             linewidth=:1.0, legend=:bottomright,
             xlabel="lx", ylabel="advection")
-        plot!(xc, C, label="advection", markershape=:circle, markersize=5, framestyle=:box)
+        plot!(xc,  [C_i, C], label="advection",  title="Time = $(round(it*dt, digits=1))",
+             markershape=:circle, markersize=5, framestyle=:box)
     end
     # # Save to gif file
     path = "images/pde/advection_1D.gif"
