@@ -65,7 +65,7 @@ end
 function acoustic_wave()
     # physics
     lx = 20.0 # domain length
-    dc = 1.0 # diffusion coefficient 
+    dc = 1.0  # coefficient 
     ρ, β = 1.0, 1.0
     # numerics
     nx   = 200 # the number of grid points
@@ -101,4 +101,41 @@ function acoustic_wave()
     gif(anim, path, fps=FPS)
     println("Save gif result to $path")
 end
-acoustic_wave()
+# acoustic_wave()
+
+
+# advection
+function advection()
+    # physics
+    lx = 20.0 # domain length
+    vx = 1.0  # coefficient 
+    # numerics
+    nx = 200   # the number of grid points
+    dx = lx/nx  # grid spacing dx 
+    # derived numerics
+    dt = dx/abs(vx)
+    nt = nx^2 ÷ 100 # time 
+    # creates a linear range of numbers
+    xc = LinRange(dx/2, lx-dx/2, nx)
+    # array initialisation
+    C = @. exp(-(xc - lx/4)^2)
+    println("size(C)", size(C))
+    anim = @animate for it=1:nt
+        if vx > 0
+            C[2:end] .-= dt.*vx.*diff(C)./dx
+        else
+            C[1:end-1] .-= dt.*vx.*diff(C)./dx
+        end
+        #println("it = ", it, " C = ", C[1:5])
+        plot(xlim = (0, lx), ylim = (-15.1, 15.1), 
+            linewidth=:1.0, legend=:bottomright,
+            xlabel="lx", ylabel="advection")
+        plot!(xc, C, label="advection", markershape=:circle, markersize=5, framestyle=:box)
+    end
+    # # Save to gif file
+    path = "images/pde/advection_1D.gif"
+    gif(anim, path, fps=FPS)
+    println("Save gif result to $path")
+end
+
+advection()
