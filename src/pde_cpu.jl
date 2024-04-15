@@ -2,30 +2,70 @@
 import Pkg
 # Pkg.add("CUDA") # Install Cuda
 Pkg.add("BenchmarkTools") # Install benchmark tools
+Pkg.add("Plots") # Install Plots 
 # Pkg.add("BenchmarkPlots")
-# Pkg.add("StatsPlots")
 using Plots, BenchmarkTools
-# using Images, FileIO
-# # Use Cuda
-# using CUDA, Test,  BenchmarkPlots, StatsPlots
-const FPS = 15
-# Visualize diffusion using 1D array
+default(size=(1200, 400), framestyle=:box, label=false, 
+        grid=false, linewidth=6.0, thickness_scaling=1, labelfontsize=20, tickfontsize=20, titlefontsize=24)
+
 function diffusion_1D()
+    # physics
+    lx = 20.0
+    dc = 1.0
+    # numerics
+    nx = 200
+    nvis = 5
+    # derived numerics
+    dx = lx / nx
+    dt = dx^2 / dc / 2
+    nt = nx^2 ÷ 100
+    println("Constants: nt = $(nt)")
+    xc = LinRange(dx / 2, lx - dx / 2, nx)
+    # array initialisation
+    C = @. 0.5cos(9π * xc / lx) + 0.5
+    C_i = copy(C)
+    qx = zeros(Float64, nx - 1)
+    # time loop
+    anim = @animate for it = 1:nt
+        qx .= .-dc .* diff(C) ./ dx
+        C[2:end-1] .-= dt .* diff(qx) ./ dx 
+        plot(xlim=(0, lx), ylim=(-1.0, 1.0), 
+             
+             legend=:bottomright, xlabel="lx", ylabel="concentration")       
+        plot!(xc, [C_i, C]; 
+                xlims=(0, lx), ylims=(-0.1, 1.1),
+                xlabel="lx", ylabel="Concentration",
+                title="Time = $(round(it*dt, sigdigits=1))")
+        # display(plot(xc, [C_i, C]; 
+        #       xlims=(0, lx), ylims=(-0.1, 1.1),
+        #       xlabel="lx", ylabel="Concentration",
+        #       title="Time = $(round(it*dt, sigdigits=1))"))
+    end every nvis
+    # println("err_evo ", err_evo[length(err_evo)-5:length(err_evo)])    
+    # Save to gif file
+    path = "images/pde/diffusion_1D.gif"
+    gif(anim, path, fps=10)
+    println("Save gif result to $path")
+end
+println("Complete the simulation of diffusion ", diffusion_1D())
+
+
+# Visualize diffusion using 1D array
+function steady_diffusion_1D()
     # physics
     lx = 20.0 # domain length
     dc = 1.0 # diffusion coefficient
     #ρ = 20.0*10 # Large value leads to a long convergence time
-    ρ = (lx/(dc*2π))^2 # Optimal value for convergence
+    re = 2π # π + sqrt(π^2 + da )
+    ρ = (lx/(dc*re))^2 # Optimal value for convergence
     # numerics (Constants)
-    nx   = 200 # the number of grid points
-    nvis = 2 # frequency of updating the visualisation
+    nx   = 100 # the number of grid points
     ϵtol = 1e-8
     maxiter = 20nx # Maximal iterations
-    ncheck = ceil(Int, 0.1nx) # NUmber of checks
+    ncheck = ceil(Int, 0.25nx) # NUmber of checks
     # derived numerics
     dx = lx/nx      #grid spacing dx 
-    dt = dx/sqrt(1/ρ) # dt = dx^2/dc/2  # diffusion
-    nt = 5*nx# nt = nx^2 ÷ 5 # time 
+    dτ = dx/sqrt(1/ρ) # dt = dx^2/dc/2  # diffusion
     # creates a linear range of numbers, starting from dx/2, ending at lx-dx/2, and 200 numbers (nx)
     xc = LinRange(dx/2, lx-dx/2, nx)
     # array initialisation
@@ -33,47 +73,51 @@ function diffusion_1D()
     C = @. 1.0 + exp( -(xc-lx/4)^2 ) - xc/lx
     C_i = copy(C)
     qx = zeros(Float64, nx-1) # diffusive flux in the x direction qx
-    println("Constant: nt = ", nt, " dc = ", dc, " dx = ", dx, " dt = ", dt)
+    println("Constant: dc = ", dc, " dx = ", dx, " d⬆ = ", dτ)
     println("ρ = ", ρ)    
-    # Go through each time step
+    # Iteration loop
     iter = 1; err = 2ϵtol
-    iter_evo = Float64[]
-    err_evo = Float64[]
+    iter_nxs = Float64[]
+    errs = Float64[]
     anim = @animate while err>= ϵtol && iter < maxiter
+    # while err>= ϵtol && iter < maxiter
         # println("Before it = ", it, " C[1:5] = ", C[1:5])
         # diff: difference between C[ix+1] - C[ix]
         # qx = -dc .* diff(C)./dx  #diffusive flux dx =4.0
-        qx .-= dt ./ (ρ * dc + dt) .* (qx .+ dc .* diff(C) ./dx )
+        qx .-= dτ ./ (ρ * dc .+ dτ) .* (qx .+ dc .* diff(C) ./dx )
         # println("it = ", it,  " qx[1:5] = ", qx[1:5])
         # flux balance equation
-        C[2:end-1] .-= dt.* diff(qx) ./dx
+        C[2:end-1] .-= dτ .* diff(qx) ./dx
+        # C[2:end-1] .-= dτ./(1 + dτ/ξ) .*((C[2:end-1] .- C_eq)./ξ .+ diff(qx)./dx)
         if iter % ncheck == 0
             err = maximum(abs.(diff(dc .* diff(C) ./dx)/dx)) # Get the maximal value 
-            push!(iter_evo, iter)
-            push!(err_evo, err)
-            println("Complete the iteration: ", iter, " Error = ", round(err, sigdigits=2))
+            push!(iter_nxs, iter/nx)
+            push!(errs, err)
+            println("Complete the iteration:  $(iter), iter/nx = $(iter/nx), Error = $(round(err, sigdigits=2))")
             # Plot the results
             p1 = plot(xc, [C_i, C]; 
                        xlim = (0, lx), ylim = (-0.1, 2.0), 
-                       linewidth=:5.0, legend=:bottomright,
+                       linewidth=:5.0, legend=false,
                        xlabel="lx", ylabel="Concentration", 
-                       label="Concentration", title="Iteration = $(iter)")
-            p2 = plot(iter_evo, err_evo; ylim = (-0.05, 1.0), xlim = (0, 1210),
-                      xlabel="iter", ylabel="err",
-                      label="error", title="Error = $(round(err, sigdigits=2))", 
+                       title="Iter/nx = $(round(iter/nx, sigdigits=3))")
+            p2 = plot(iter_nxs, errs; legend=false,
+                      yscale=:log10, grid=true,
+                      xlabel="iter/nx", ylabel="err",
+                      title="Error = $(round(err, sigdigits=2))", 
                       markershape=:circle, markersize=2)
             plot!(p1, p2; layout=(2,1))
-            # display(plot(p1, p2; layout=(2,1)))
+            display(plot(p1, p2; layout=(2,1)))
         end
         iter += 1
     end 
     # println("err_evo ", err_evo[length(err_evo)-5:length(err_evo)])    
-    # # Save to gif file
-    path = "images/pde/diffusion_1D.gif"
-    gif(anim, path, fps=50)
+    # Save to gif file
+    path = "images/pde/steady_diffusion_1D.gif"
+    gif(anim, path, fps=10)
     println("Save gif result to $path")
 end
-println("Complete the simulation of diffusion ", @elapsed diffusion_1D())
+# println("Complete the simulation of steady diffusion ", steady_diffusion_1D())
+
 
 function wave_propagation()
     # physics
@@ -110,10 +154,11 @@ function wave_propagation()
     end every nvis
     # # Save to gif file
     path = "images/pde/wave_propagation_1D.gif"
-    gif(anim, path, fps=FPS)
+    gif(anim, path, fps=15)
     println("Save gif result to $path")
 end
-# wave_propagation()
+println("Complete the simulation of wave_propagation ",  wave_propagation())
+
 
 # advection
 function advection()
@@ -151,7 +196,8 @@ function advection()
     end every nvis
     # # Save to gif file
     path = "images/pde/advection_1D.gif"
-    gif(anim, path, fps=FPS)
+    gif(anim, path, fps=15)
     println("Save gif result to $path")
 end
-# advection()
+println("Complete the simulation of advection ",  advection())
+# 
