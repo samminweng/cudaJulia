@@ -3,8 +3,11 @@ import Pkg
 # Pkg.add("CUDA") # Install Cuda
 Pkg.add("BenchmarkTools") # Install benchmark tools
 Pkg.add("Plots") # Install Plots 
+Pkg.add("LoopVectorization") # Install loop vectorization
 # Pkg.add("BenchmarkPlots")
-using Plots, BenchmarkTools, Plots.PlotMeasures, Printf
+using Plots, BenchmarkTools, Plots.PlotMeasures, Printf, Test, Base.Threads
+
+println("The number of threads = $(nthreadpools())")
 # Default Plot options 
 default(size=(1200, 400), framestyle=:box, label=false, margin=40px,
     grid=true, linewidth=6.0, thickness_scaling=1,
@@ -88,7 +91,7 @@ function diffusion_2D_Teff(do_check)
         println("Save gif result to $path")
     end
 end
-# println("Complete the simulation of diffusion_2D_Teff ", diffusion_2D_Teff(false))
+println("Complete the simulation of diffusion_2D_Teff ", diffusion_2D_Teff(false))
 
 
 # Perform diffusion using 2D array using Parallel computing
@@ -173,7 +176,7 @@ function diffusion_2D_perf(do_check)
         println("Save gif result to $path")
     end
 end
-# println("Complete the simulation of diffusion_2D_perf ", diffusion_2D_perf(false))
+println("Complete the simulation of diffusion_2D_perf ", diffusion_2D_perf(false))
 
 # Create macros that computes difference 
 macro d_xa(A)
@@ -324,8 +327,6 @@ function compute!(C, qx, qy, _dc_dx, _dc_dy, _1_θ_dτ,  _dx, _dy, _β_dτ)
     return nothing
 end
 
-
-
 function diffusion_2D_perf_loop_fun(do_check)
     # physics
     lx, ly = 20.0, 20.0 # domain length
@@ -354,7 +355,6 @@ function diffusion_2D_perf_loop_fun(do_check)
     err = 2ϵtol
     iter_nxs = Float64[]
     errs = Float64[]
-    t_tic = Base.time() # Start time 
     t_toc = 0
     niter = 0
     # Precompute scalars, removing division and casual array
@@ -362,43 +362,37 @@ function diffusion_2D_perf_loop_fun(do_check)
     _1_θ_dτ = 1.0 ./ (1.0 + Θ_dτ)
     _dx, _dy = 1.0 / dx, 1.0 / dy
     _β_dτ = 1.0 ./ β_dτ
+    t_tic = Base.time() # Start time 
     # Benchmark the compute! function
-    t_toc = @belapsed compute!($C, $qx, $qy, $_dc_dx, $_dc_dy, $_1_θ_dτ, $_dx, $_dy, $_β_dτ)
-    niter = 1
-    # t_toc = Base.time() - t_tic # Elapsed time
-    # println("Loop condition: err>= $(ϵtol) and  iter < $(maxiter)")
-    # while err >= ϵtol && iter < maxiter
-    #     #diffusive flux 
-    #     # qx[2:end-1, :] .-= (qx[2:end-1, :]  .+ _dc_dx .* diff(C, dims=1)) .* _1_θ_dτ 
-    #     compute_flux!(qx, qy, C, _dc_dx, _dc_dy, _1_θ_dτ)
-    #     # flux balance equation
-    #     #  diff() are allocating and that Julia is overall well optimised for executing loops.
-    #     # C .-= (diff(qx, dims=1) .* _dx .+ diff(qy, dims=2) .* _dy) .* _β_dτ
-    #     update_C!(C, qx, qy, _dx, _dy, _β_dτ)
-    #     # Check the iteration results and calculate the errors 
-    #     if do_check && (iter % ncheck == 0)
-    #         r .= diff(qx, dims=1) .* _dx .+ diff(qy, dims=2) .* _dy # residual
-    #         err = maximum(abs.(r)) # Get the maximal value
-    #         push!(iter_nxs, iter / nx)
-    #         push!(errs, err)
-    #         println("Complete iter/nx = $(round(iter/nx, sigdigits=3)), Error = $(round(err, sigdigits=3))")
-    #         # Plot the results
-    #         opts = (aspect_ratio=1, xlims=(xc[1], xc[end]), ylims=(yc[1], yc[end]),
-    #             clims=(0.0, 1.0), c=:turbo, xlabel="Lx", ylabel="Ly",
-    #             title="time = $(round(iter/nx, sigdigits=3))")
-    #         p1 = heatmap(xc, yc, C'; opts)  # C' denotes transpose 
-    #         p2 = plot(iter_nxs, errs;
-    #             xlabel="iter/nx", ylabel="err",
-    #             yscale=:log10, grid=true, markershape=:circle, markersize=10)
-    #         p3 = plot(p1, p2; layout=(1, 2))
-    #         frame(anim, p3)
-    #         # display(p3)
-    #         png(p3, "images/pde_gpu/diffusion_2D_perf_loop_fun.png")
-    #     end
-    #     niter = iter # Total number of iterations
-    #     iter += 1
-    # end
-   
+    println("Loop condition: err>= $(ϵtol) and  iter < $(maxiter)")
+    while err >= ϵtol && iter < maxiter
+        #diffusive flux 
+        # qx[2:end-1, :] .-= (qx[2:end-1, :]  .+ _dc_dx .* diff(C, dims=1)) .* _1_θ_dτ 
+        compute!(C, qx, qy, _dc_dx, _dc_dy, _1_θ_dτ, _dx, _dy, _β_dτ)
+        # Check the iteration results and calculate the errors 
+        if do_check && (iter % ncheck == 0)
+            r .= diff(qx, dims=1) .* _dx .+ diff(qy, dims=2) .* _dy # residual
+            err = maximum(abs.(r)) # Get the maximal value
+            push!(iter_nxs, iter / nx)
+            push!(errs, err)
+            println("Complete iter/nx = $(round(iter/nx, sigdigits=3)), Error = $(round(err, sigdigits=3))")
+            # Plot the results
+            opts = (aspect_ratio=1, xlims=(xc[1], xc[end]), ylims=(yc[1], yc[end]),
+                clims=(0.0, 1.0), c=:turbo, xlabel="Lx", ylabel="Ly",
+                title="time = $(round(iter/nx, sigdigits=3))")
+            p1 = heatmap(xc, yc, C'; opts)  # C' denotes transpose 
+            p2 = plot(iter_nxs, errs;
+                xlabel="iter/nx", ylabel="err",
+                yscale=:log10, grid=true, markershape=:circle, markersize=10)
+            p3 = plot(p1, p2; layout=(1, 2))
+            frame(anim, p3)
+            # display(p3)
+            png(p3, "images/pde_gpu/diffusion_2D_perf_loop_fun.png")
+        end
+        niter = iter # Total number of iterations
+        iter += 1
+    end
+    t_toc = Base.time() - t_tic # Elapsed time
     # Performance metrics
     A_eff = (3 * 2) / 1e9 * nx * ny * sizeof(Float64)  # Effective main memory access per iteration [GB]
     t_it = t_toc / niter                      # Execution time per iteration [s]
