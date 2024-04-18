@@ -6,6 +6,7 @@ Pkg.add("Plots") # Install Plots
 Pkg.add("LoopVectorization") # Install loop vectorization
 # Pkg.add("BenchmarkPlots")
 using Plots, BenchmarkTools, Plots.PlotMeasures, Printf, Test, Base.Threads
+using LoopVectorization # using @tturbo: Loop vectorization
 
 println("The number of threads = $(nthreadpools())")
 # Default Plot options 
@@ -23,18 +24,19 @@ macro d_ya(A)
     esc(:($A[ix, iy+1] - $A[ix, iy]))
 end
 
+# @tturbo: Loop vectorization
 # Perform diffusion using 2D array using Parallel computing
 function compute_flux!(qx, qy, C, _dc_dx, _dc_dy, _1_θ_dτ)
     nx, ny = size(C)
     # qx[2:end-1, :] .-= (qx[2:end-1, :]  .+ _dc_dx .* diff(C, dims=1)) .* _1_θ_dτ 
-    for iy = 1:ny
+    @tturbo for iy = 1:ny
         for ix = 1:nx-1
             # qx[ix+1, iy] -= (qx[ix+1, iy] + _dc_dx * (C[ix+1, iy] - C[ix, iy])) * _1_θ_dτ
             @inbounds qx[ix+1, iy] -= (qx[ix+1, iy] + _dc_dx * @d_xa(C)) * _1_θ_dτ
         end
     end
     # qy[:, 2:end-1] .-= (qy[:, 2:end-1]  .+ _dc_dy .* diff(C, dims=2)) .* _1_θ_dτ 
-    for iy = 1:ny-1
+    @tturbo for iy = 1:ny-1
         for ix = 1:nx
             # qy[ix, iy+1] -= (qy[ix, iy+1] + _dc_dy * (C[ix, iy+1] - C[ix, iy])) * _1_θ_dτ
             @inbounds qy[ix, iy+1] -= (qy[ix, iy+1] + _dc_dy * @d_ya(C)) * _1_θ_dτ
@@ -46,7 +48,7 @@ end
 function update_C!(C, qx, qy, _dx, _dy, _β_dτ)
     nx, ny = size(C)
     # C .-= (diff(qx, dims=1) .* _dx .+ diff(qy, dims=2) .* _dy) .* _β_dτ
-    for iy = 1:ny
+    @tturbo for iy = 1:ny
         for ix = 1:nx
             # C[ix, iy] -= ((qx[ix+1, iy] -qx[ix, iy]) * _dx + (qy[ix, iy+1] - qy[ix, iy]) * _dy) * _β_dτ
             @inbounds C[ix, iy] -= (@d_xa(qx) * _dx + @d_ya(qy) * _dy) * _β_dτ
@@ -140,4 +142,4 @@ function diffusion_2D_perf_loop_fun(do_check)
         println("Save gif result to $path")
     end
 end
-println("Complete the simulation of diffusion_2D_perf_loop_fun ", diffusion_2D_perf_loop_fun(true))
+println("Complete the simulation of diffusion_2D_perf_loop_fun ", diffusion_2D_perf_loop_fun(false))
