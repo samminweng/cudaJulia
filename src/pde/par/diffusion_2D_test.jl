@@ -93,7 +93,7 @@ function diffusion_2D_perf_loop_fun(nx, ny, maxiter, do_check=false)
     # iteration loop
     t_tic = Base.time()
     # while iter <= maxiter
-    while err_Pf >= ϵtol && iter <= maxiter
+    while iter <= maxiter
         #Compute diffusion physics 
         compute!(Pf, qDx, qDy, _dc_dx, _dc_dy, _1_θ_dτ, _dx, _dy, _β_dτ)
         # Check the iteration results and calculate the errors 
@@ -140,5 +140,28 @@ function diffusion_2D_perf_loop_fun(nx, ny, maxiter, do_check=false)
     return Pf[xtest, ytest]
 end
 
+nx = ny = 16 * 2 .^ (2:5) .- 1
+maxiter = 500
+println("nx = $(nx), ny = $(ny)")
+@testset "Pf_diffusion_2D Tests" begin
+    @test round.(diffusion_2D_perf_loop_fun(nx[1], ny[1], maxiter), sigdigits=15) == 
+          round.([0.00785398056115133, 
+                  0.00785398063755575,
+                  0.00785397859241198], sigdigits=15)
+    @test round.(diffusion_2D_perf_loop_fun(nx[2], ny[2], maxiter), sigdigits=15) == 
+          round.([0.00787296974549236,
+                  0.007849556884184108,
+                  0.007847181374079883], sigdigits=15)
+    @test round.(diffusion_2D_perf_loop_fun(nx[3], ny[3], maxiter), sigdigits=15) == 
+          round.([0.00740912103848253,
+                  0.009143711648167267,
+                  0.007419533048751209], sigdigits=15)
+    @test round.(diffusion_2D_perf_loop_fun(nx[4], ny[4], maxiter), sigdigits=15) == 
+                  round.([0.00566813765849918,
+                          0.00434878533857564,
+                          0.00561869159049808], sigdigits=15)
+end
 
-diffusion_2D_perf_loop_fun(512, 512, 500*500, true)
+
+
+
