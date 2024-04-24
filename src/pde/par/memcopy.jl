@@ -75,7 +75,8 @@ function memcopy(nx, ny, bench="ap")
     println("Complete the simulation of memcopy of nx = $(nx) and ny = $(ny) ")
     println("Total number of iterations = $(niter), Elapsed time = $(round(t_toc, sigdigits=3)) [s]")
     println("Execution time per iteration = $(round(t_it, sigdigits=3)) [s]")
-    println("Memory access per iteration = $(round(A_eff, sigdigits=3)) [GB], Memory throughput = $(round(T_eff, sigdigits=3)) [GB/s]")
+    println("Memory access per iteration = $(round(A_eff, sigdigits=3)) [GB]") 
+    println("Memory throughput = $(round(T_eff, sigdigits=3)) [GB/s]")
     return T_eff
 end
 function main()
@@ -88,7 +89,6 @@ function main()
         for i =1:8
             nx, ny = nxs[i], nys[i]
             t_eff = memcopy(nx, ny, bench)
-            
             push!(iter_evo, nx*ny)
             push!(t_eff_evo, t_eff)
         end
@@ -105,7 +105,7 @@ function main()
                  ylimit=(0, 250), xlimit=(0, 4096*4096), 
                  xlabel="grid size [log(nx*ny)]", ylabel="Memory throughput [GB/s]",
                  title=title, # txt= t_eff_evo, 
-                 markersize=1, markershape=:circle)
+                 markersize=3, markershape=:circle)
         benchmark_results[bench] = p
     end
     p1 = benchmark_results["ap"]
