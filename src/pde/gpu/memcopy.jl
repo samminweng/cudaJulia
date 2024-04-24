@@ -8,9 +8,7 @@ blocks  = (2, 2) # Specify the number of blocks in a grid
 nx, ny  = threads[1]*blocks[1], threads[2]*blocks[2]
 println("nx = $(nx), ny = $(ny)")
  
-
-
-
+# Kernel function
 function copy!(A, B)
     # Compute thread ID (ix, iy)
     ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
@@ -37,21 +35,30 @@ function test_copy!()
 end
 test_copy!() 
 
-function bench_gpu_copy()
-    A = CUDA.zeros(Float64, nx, ny) # Create array A on device memory
-    B = CUDA.rand(Float64, nx, ny) 
+function bench_gpu_copy(A, B)
     CUDA.@sync begin
         @cuda copy!(A, B)
     end
 end
-println("Benchmark GPU copy ", @benchmark bench_gpu_copy())
+# Run benchmarks on GPUs
+io = IOContext(stdout, :histmin=>0.5, :histmax=>8, :logbins=>true)
+A = CUDA.zeros(Float64, nx, ny) # Create array A on device memory
+B = CUDA.rand(Float64, nx, ny) 
+b_gpu = @benchmark bench_gpu_copy($A, $B)
+println("Benchmark results of GPU copy")
+# println( dump(b_gpu))
+show(io, MIME("text/plain"), b_gpu)
+println("-------------------------------")
+println("\n\nProfiling the benchmarks of GPU copy")
+CUDA.@profile trace=true bench_gpu_copy()
 
-function bench_cpu_copy()
-    A = zeros(Float64, nx, ny) # Create array A on device memory
-    B = rand(Float64, nx, ny) 
-    A .= B
-end
-println("Benchmark CPU copy ", @benchmark bench_cpu_copy())
+# function bench_cpu_copy()
+#     A = zeros(Float64, nx, ny) # Create array A on device memory
+#     B = rand(Float64, nx, ny) 
+#     A .= B
+# end
+# b_cpu = @benchmark bench_cpu_copy()
+# println("Benchmark results of CPU copy ", dump(b_cpu) )
 
 
 
