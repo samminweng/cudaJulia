@@ -31,7 +31,8 @@ function bench_memcopy_cpus()
         C = rand(Float64, nx, ny)
         s = rand((1, 10))
         t_it = @belapsed begin memcopy_AP!($A, $B, $C, $s); synchronize() end
-        T_tot = 2*1/1e9*nx*ny*sizeof(Float64)/t_it
+        numOp = 3 # 3: Two Read and one write operations
+        T_tot = numOp * 1/1e9 * nx * ny * sizeof(Float64)/t_it
         ## Display the results
         println("--------------------------------------------------------")
         println("array_size = $(array_size), nx = $(nx), ny = $(ny)")
@@ -58,11 +59,11 @@ end
 
 
 # Kernel function
-function memcopy_KP!(A, B, C)
+function memcopy_KP!(A, B, C, s)
     # Compute thread ID (ix, iy)
     ix = (blockIdx().x-1) * blockDim().x + threadIdx().x
     iy = (blockIdx().y-1) * blockDim().y + threadIdx().y
-    A[ix,iy] = B[ix,iy] + C[ix, iy]# Copy arrays
+    A[ix,iy] = B[ix,iy] + s * C[ix, iy]# Copy arrays
     return nothing
 end
 # Ref: https://github.com/eth-vaw-glaciology/course-101-0250-00/blob/main/slide-notebooks/notebooks/l6_1-gpu-memcopy.ipynb
@@ -85,13 +86,13 @@ function bench_memcopy_gpus()
         # Use only 32*2 thread per block
         threads = (32, 2)
         blocks =(nx÷threads[1], ny÷threads[2])
-        t_it = @belapsed begin @cuda blocks=$blocks threads=$threads memcopy_KP!($A, $B, $C); synchronize() end
+        t_it = @belapsed begin @cuda blocks=$blocks threads=$threads memcopy_KP!($A, $B, $C, $s); synchronize() end
         # Compute the throughputs 
-        numOp = 2 # 2: Read and write operations
+        numOp = 3 # 3: Two Read and one write operations
         T_tot = numOp * 1/1e9 * nx * ny * sizeof(Float64)/t_it
         ## Display the results
         println("--------------------------------------------------------")
-        println("array_size = $(array_size), nx = $(nx), ny = $(ny), thread counts = $(prod(threads))")
+        println("array_size = $(array_size), nx = $(nx), ny = $(ny), threads = $(threads), blocks=$(blocks)")
         println("selected GPUs = $( CUDA.name( CUDA.current_device() ) ) ")
         println("total execution time = $(t_it) [s]")
         println("benchmark memory throughtput = $( round(T_tot, sigdigits=3) ) [G/s]")
@@ -100,6 +101,7 @@ function bench_memcopy_gpus()
         push!(throughtputs, T_tot)
         CUDA.unsafe_free!(A)
         CUDA.unsafe_free!(B)
+        CUDA.unsafe_free!(C)
     end
     throughtputs .= round.(throughtputs, sigdigits=4)
     println("Complete CUDA benchmarks on $( CUDA.name( CUDA.current_device() ) )")
@@ -139,9 +141,9 @@ function display_bench()
     png(p, "images/pde/gpu/memcopy_benchmark.png")
 end
 
-# bench_memcopy_cpus() # Benchmark on CPU
-# bench_memcopy_gpus() # Benchmark on GPUs
-display_bench()
+bench_memcopy_cpus() # Benchmark on CPU
+bench_memcopy_gpus() # Benchmark on GPUs
+# display_bench()
 
 
 function bench_cuda_threads()
