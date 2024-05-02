@@ -1,6 +1,5 @@
 # # Install Cuda in Julia
 import Pkg
-# Pkg.add("CUDA") # Install Cuda
 Pkg.add("BenchmarkTools") # Install benchmark tools
 Pkg.add("Plots") # Install Plots 
 Pkg.add("LoopVectorization") # Install loop vectorization
@@ -8,7 +7,6 @@ Pkg.add("LoopVectorization") # Install loop vectorization
 using Plots, BenchmarkTools, Plots.PlotMeasures, Printf, Test, Base.Threads
 using LoopVectorization # using @tturbo: Loop vectorization
 
-println("The number of threads = $(nthreadpools())")
 # Default Plot options 
 default(size=(1200, 400), framestyle=:box, label=false, margin=40px,
     grid=true, linewidth=6.0, thickness_scaling=1,
@@ -59,8 +57,9 @@ function compute!(Pf, qDx, qDy, _dc_dx, _dc_dy, _1_θ_dτ, _dx, _dy, _β_dτ)
     return nothing
 end
 # nx, ny: the number of grid points
-function diffusion_2D_perf_loop_fun(nx, ny, maxiter, do_check=false)
+function diffusion_2D_perf_loop_fun(do_check=false)
     # physics
+    nx, ny, maxiter = 32 * 2, 32 * 2, 20
     lx, ly = 20.0, 20.0
     dc = 1.0
     # numerics
@@ -89,13 +88,15 @@ function diffusion_2D_perf_loop_fun(nx, ny, maxiter, do_check=false)
     _1_θ_dτ = 1.0 ./ (1.0 + θ_dτ)
     _dx, _dy = 1.0/dx, 1.0/dy
     _β_dτ = 1.0 ./ β_dτ
+    println("CPU version: Before Pf[1:5, 2] = $(Array(Pf)[1:5, 2])")
     anim = Animation() # Create animation object
     # iteration loop
     t_tic = Base.time()
     # while iter <= maxiter
-    while err_Pf >= ϵtol && iter <= maxiter
+    for iter=1:maxiter
         #Compute diffusion physics 
         compute!(Pf, qDx, qDy, _dc_dx, _dc_dy, _1_θ_dτ, _dx, _dy, _β_dτ)
+        println("Complete iteration = $(iter)")
         # Check the iteration results and calculate the errors 
         if do_check && (iter % ncheck == 0)
             r_Pf .= diff(qDx, dims=1) .* _dx  .+ diff(qDy, dims=2) .* _dy # residual
@@ -120,6 +121,7 @@ function diffusion_2D_perf_loop_fun(nx, ny, maxiter, do_check=false)
         iter += 1
     end
     t_toc = Base.time() - t_tic
+    println("After: Pf[1:5, 2] = $(Array(Pf)[1:5, 2])")
     # Save to gif file
     if do_check
         path = "images/pde/par/diffusion_2D_perf_loop_fun.gif"
@@ -141,4 +143,4 @@ function diffusion_2D_perf_loop_fun(nx, ny, maxiter, do_check=false)
 end
 
 
-diffusion_2D_perf_loop_fun(512, 512, 500*500, true)
+diffusion_2D_perf_loop_fun()

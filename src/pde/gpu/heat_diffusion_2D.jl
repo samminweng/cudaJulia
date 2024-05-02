@@ -36,7 +36,7 @@ function diffusion2D()
     lx, ly = 10.0, 10.0 # Length of computational domain in dimension x and y
     # Numerics
     nx, ny = 32*2, 32*2         # Number of gridpoints in dimensions x and y
-    nt = 10                       # Number of time steps
+    nt = 100                       # Number of time steps
     dx = lx / (nx - 1)              # Space step in x-dimension
     dy = ly / (ny - 1)              # Space step in y-dimension
     _dx, _dy = 1.0 / dx, 1.0 / dy
@@ -68,7 +68,7 @@ function diffusion2D()
         t_it = @belapsed begin diffusion2D_step!($T, $Ci, $qTx, $qTy, $dTdt, $lam, $dt, $_dx, $_dy); synchronize() end
         numOp = 11 # 7 Read and 4 write operations
         T_tot_lb = numOp * 1/1e9 * nx * ny * sizeof(Float64)/t_it
-        if it % 1 == 0
+        if it % 5 == 0
             println("Complete iteration $(it) ")
             p = heatmap(Array(T)'; opts)
             # display(p)            # Visualization
